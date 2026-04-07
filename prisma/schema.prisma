@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FLAGGED
+}
+
+enum FundingSource {
+  SELF
+  ESCROW
+}
+
+model Eulogy {
+  id              String           @id @default(cuid())
+  cid             String           @unique
+  imageCid        String?
+  name            String
+  dateOfBirth     DateTime?
+  dateOfPassing   DateTime?
+  relationship    String?
+  visibility      Visibility       @default(PUBLIC)
+  contentPreview  String?
+  creatorAddress  String
+  fundedBy        FundingSource    @default(SELF)
+  moderation      ModerationStatus @default(PENDING)
+  moderationNote  String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([visibility, moderation])
+  @@index([creatorAddress])
+  @@index([name])
+}
+
+model EscrowContribution {
+  id            String   @id @default(cuid())
+  walletAddress String
+  displayName   String?
+  ai3Amount     String
+  txHash        String?  @unique
+  createdAt     DateTime @default(now())
+
+  @@index([walletAddress])
+}
+
+model EscrowDrawdown {
+  id            String   @id @default(cuid())
+  eulogyId      String
+  creditAmount  Int
+  ai3Equivalent String
+  createdAt     DateTime @default(now())
+
+  @@index([eulogyId])
+}
+
+model AssistantSession {
+  id            String   @id @default(cuid())
+  userId        String
+  eulogyDraftId String?
+  exchangeCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, createdAt])
+}
