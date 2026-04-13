@@ -6,31 +6,66 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action } = body;
 
-    if (action === "estimate") {
-      const estimate = await paymentService.estimateCost(body.contentSizeBytes);
-      return NextResponse.json(estimate);
-    }
-
+    // Step 1: Create an intent (locks price for 10 minutes)
     if (action === "createIntent") {
-      // TODO: Get real user ID from auth session
-      const userId = "stub-user";
-      const intent = await paymentService.createIntent(
-        userId,
-        body.creditAmount
-      );
+      const { contentSizeBytes } = body;
+      if (!contentSizeBytes || contentSizeBytes <= 0) {
+        return NextResponse.json(
+          { error: "contentSizeBytes is required" },
+          { status: 400 }
+        );
+      }
+      const intent = await paymentService.createIntent(contentSizeBytes);
       return NextResponse.json(intent);
     }
 
-    if (action === "confirm") {
-      const result = await paymentService.confirmPayment(body.intentId);
-      return NextResponse.json(result);
+    // Step 2: User has sent the on-chain tx — submit hash for watching
+    if (action === "watch") {
+      const { intentId, txHash } = body;
+      if (!intentId || !txHash) {
+        return NextResponse.json(
+          { error: "intentId and txHash are required" },
+          { status: 400 }
+        );
+      }
+      await paymentService.watchTransaction(intentId, txHash);
+      return NextResponse.json({ success: true });
+    }
+
+    // Step 3: Check intent status
+    if (action === "status") {
+      const { intentId } = body;
+      if (!intentId) {
+        return NextResponse.json(
+          { error: "intentId is required" },
+          { status: 400 }
+        );
+      }
+      const status = await paymentService.getIntentStatus(intentId);
+      return NextResponse.json(status);
+    }
+
+    // Step 4: Wait for intent to complete (long-poll)
+    if (action === "waitForCompletion") {
+      const { intentId } = body;
+      if (!intentId) {
+        return NextResponse.json(
+          { error: "intentId is required" },
+          { status: 400 }
+        );
+      }
+      const status = await paymentService.waitForCompletion(intentId);
+      return NextResponse.json({ status });
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (error) {
     console.error("Payment error:", error);
     return NextResponse.json(
-      { error: "Payment operation failed" },
+      {
+        error: "Payment operation failed",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }
