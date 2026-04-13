@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@autonomys/auto-drive": "^1.6.9",
     "@mdxeditor/editor": "^3.53.1",
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^7.6.0",

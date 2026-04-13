@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const dateOfBirth = formData.get("dateOfBirth") as string | null;
     const dateOfPassing = formData.get("dateOfPassing") as string | null;
     const relationship = formData.get("relationship") as string | null;
-    const image = formData.get("image") as File | null;
+    const imageFile = formData.get("image") as File | null;
 
     if (!name || !content) {
       return NextResponse.json(
@@ -23,17 +23,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Get user token from auth session
-    const userToken = "stub-user-token";
-    const creatorAddress = "0x0000000000000000000000000000000000000000";
-
     // Upload image if present
     let imageCid: string | undefined;
-    if (image) {
+    if (imageFile) {
+      const arrayBuffer = await imageFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
       const result = await autoDriveClient.uploadFile(
-        image,
-        image.name,
-        userToken
+        buffer,
+        imageFile.name,
+        imageFile.type
       );
       imageCid = result.cid;
     }
@@ -47,7 +45,7 @@ export async function POST(request: NextRequest) {
       contentFormat: "markdown",
       visibility,
       createdAt: new Date().toISOString(),
-      createdBy: creatorAddress,
+      createdBy: "eulonomys-app",
       fundedBy: "self",
       ...(dateOfBirth ? { dateOfBirth } : {}),
       ...(dateOfPassing ? { dateOfPassing } : {}),
@@ -58,8 +56,7 @@ export async function POST(request: NextRequest) {
     // Upload metadata JSON to Auto Drive
     const result = await autoDriveClient.uploadJson(
       metadata as unknown as Record<string, unknown>,
-      `${name.replace(/[^a-zA-Z0-9]/g, "-")}-eulogy.json`,
-      userToken
+      `${name.replace(/[^a-zA-Z0-9]/g, "-")}-eulogy.json`
     );
 
     // Content preview for browse cards
@@ -86,7 +83,7 @@ export async function POST(request: NextRequest) {
         relationship,
         visibility: visibility === "public" ? "PUBLIC" : "PRIVATE",
         contentPreview,
-        creatorAddress,
+        creatorAddress: "eulonomys-app",
         fundedBy: "SELF",
         moderation: moderationStatus,
       },
