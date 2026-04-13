@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { VerifyButton } from "./VerifyButton";
-import { getGatewayUrl } from "@/services/autoDrive";
+const gatewayUrl =
+  process.env.NEXT_PUBLIC_AUTO_DRIVE_GATEWAY_URL ||
+  "https://gateway.autonomys.xyz/file";
 import type { EulogyMetadata } from "@/types/eulogy";
 
 function formatDate(dateStr?: string) {
@@ -13,6 +16,49 @@ function formatDate(dateStr?: string) {
     month: "long",
     day: "numeric",
   });
+}
+
+function ShareButton({ cid, name }: { cid: string; name: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}/eulogy/${cid}`;
+    const text = `A permanent eulogy for ${name}, stored on the Autonomys Network.`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${name} — Eulonomys`, text, url });
+        return;
+      } catch {
+        // User cancelled or share failed — fall through to clipboard
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Fallback for when document loses focus
+      const textarea = document.createElement("textarea");
+      textarea.value = url;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleShare}
+      className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm text-muted transition-colors hover:bg-stone-100"
+    >
+      {copied ? "Link copied" : "Share"}
+    </button>
+  );
 }
 
 export function EulogyDetail({
@@ -44,7 +90,7 @@ export function EulogyDetail({
         <div className="mt-8 flex justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={getGatewayUrl(metadata.imageCid)}
+            src={`${gatewayUrl}/${metadata.imageCid}`}
             alt={`Photo of ${metadata.name}`}
             className="max-h-96 rounded-lg border border-border"
           />
@@ -65,10 +111,19 @@ export function EulogyDetail({
 
         <div className="flex items-center justify-center gap-4">
           <VerifyButton cid={cid} />
+          <ShareButton cid={cid} name={metadata.name} />
         </div>
 
         <p className="text-center text-xs text-muted">
-          CID: <code className="font-mono">{cid}</code>
+          CID:{" "}
+          <a
+            href={`${gatewayUrl}/${cid}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono underline hover:text-foreground transition-colors"
+          >
+            {cid}
+          </a>
         </p>
       </footer>
     </article>
