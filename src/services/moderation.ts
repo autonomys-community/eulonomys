@@ -16,9 +16,13 @@ export interface ModerationService {
 
 export class LlmModerationService implements ModerationService {
   async screen(content: string, name: string): Promise<ModerationResult> {
+    if (process.env.NODE_ENV === "development") {
+      return { approved: true, reason: "Development mode — auto-approved", confidence: 0 };
+    }
+
     const apiKey = process.env.LLM_API_KEY;
     if (!apiKey) {
-      // If no API key, flag for manual review
+      // No LLM configured — flag for manual review
       return { approved: false, reason: "Automated screening unavailable", confidence: 0 };
     }
 
