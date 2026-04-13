@@ -1,9 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { config } from "@/config/app";
+import { validateSession } from "@/lib/nonceStore";
+
+/**
+ * Verify admin via session token issued by /api/admin/check.
+ * Returns the verified wallet address or null.
+ */
+function verifyAdmin(request: NextRequest): string | null {
+  const token = request.headers.get("authorization")?.replace("Bearer ", "");
+  if (!token) return null;
+
+  const walletAddress = validateSession(token);
+  if (!walletAddress) return null;
+
+  // Double-check the wallet is still in the admin list
+  const isAdmin = config.moderation.adminWallets.some(
+    (w) => w.toLowerCase() === walletAddress
+  );
+
+  return isAdmin ? walletAddress : null;
+}
 
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Verify admin auth (email domain allowlist / wallet address)
+    const adminAddress = verifyAdmin(request);
+    if (!adminAddress) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const statuses = (searchParams.get("status") || "PENDING,FLAGGED").split(",");
 
@@ -17,6 +42,7 @@ export async function GET(request: NextRequest) {
         cid: true,
         name: true,
         contentPreview: true,
+        imageCid: true,
         createdAt: true,
         moderation: true,
       },
@@ -34,7 +60,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // TODO: Verify admin auth
+    const adminAddress = verifyAdmin(request);
+    if (!adminAddress) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { id, action } = body;
 
@@ -49,8 +79,13 @@ export async function POST(request: NextRequest) {
       where: { id },
       data: {
         moderation: action === "approve" ? "APPROVED" : "REJECTED",
+        moderationNote: `${action}d by ${adminAddress} at ${new Date().toISOString()}`,
       },
     });
+
+    console.log(
+      `[MODERATION] ${action.toUpperCase()} eulogy ${id} by ${adminAddress}`
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
