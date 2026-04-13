@@ -33,6 +33,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
       select: {
         cid: true,
         name: true,
+        imageCid: true,
         dateOfBirth: true,
         dateOfPassing: true,
         relationship: true,
@@ -46,6 +47,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
   const cards: EulogyCardType[] = eulogies.map((e) => ({
     cid: e.cid,
     name: e.name,
+    imageCid: e.imageCid ?? undefined,
     dateOfBirth: e.dateOfBirth?.toISOString(),
     dateOfPassing: e.dateOfPassing?.toISOString(),
     relationship: e.relationship ?? undefined,

@@ -21,6 +21,7 @@ export interface EulogyCard {
   dateOfPassing?: string;
   relationship?: string;
   contentPreview?: string;
+  imageCid?: string;
   createdAt: string;
 }
 

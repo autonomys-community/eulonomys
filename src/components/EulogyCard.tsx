@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { EulogyCard as EulogyCardType } from "@/types/eulogy";
 
+const gatewayUrl =
+  process.env.NEXT_PUBLIC_AUTO_DRIVE_GATEWAY_URL ||
+  "https://gateway.autonomys.xyz/file";
+
 function formatDate(dateStr?: string) {
   if (!dateStr) return null;
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -18,20 +22,30 @@ export function EulogyCard({ eulogy }: { eulogy: EulogyCardType }) {
   return (
     <Link
       href={`/eulogy/${eulogy.cid}`}
-      className="block rounded-lg border border-border p-6 transition-colors hover:bg-stone-100/50"
+      className="block rounded-lg border border-border transition-colors hover:bg-stone-100/50 overflow-hidden"
     >
-      <h3 className="text-lg font-semibold text-foreground">{eulogy.name}</h3>
-      {dateRange && (
-        <p className="mt-1 text-sm text-muted">{dateRange}</p>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {eulogy.imageCid && (
+        <img
+          src={`${gatewayUrl}/${eulogy.imageCid}`}
+          alt=""
+          className="h-40 w-full object-cover"
+        />
       )}
-      {eulogy.relationship && (
-        <p className="mt-1 text-sm text-muted italic">{eulogy.relationship}</p>
-      )}
-      {eulogy.contentPreview && (
-        <p className="mt-3 text-sm leading-relaxed text-muted line-clamp-3">
-          {eulogy.contentPreview}
-        </p>
-      )}
+      <div className="p-6">
+        <h3 className="text-lg font-semibold text-foreground">{eulogy.name}</h3>
+        {dateRange && (
+          <p className="mt-1 text-sm text-muted">{dateRange}</p>
+        )}
+        {eulogy.relationship && (
+          <p className="mt-1 text-sm text-muted italic">{eulogy.relationship}</p>
+        )}
+        {eulogy.contentPreview && (
+          <p className="mt-3 text-sm leading-relaxed text-muted line-clamp-3">
+            {eulogy.contentPreview}
+          </p>
+        )}
+      </div>
     </Link>
   );
 }
