@@ -7,22 +7,36 @@ export async function POST(request: NextRequest) {
     const { action } = body;
 
     if (action === "contribute") {
-      // TODO: Get wallet address from auth/wallet session
-      const walletAddress = "0x0000000000000000000000000000000000000000";
-      const result = await escrowService.contribute(
+      const { walletAddress, ai3Amount, txHash, displayName } = body;
+
+      if (!walletAddress || !ai3Amount || !txHash) {
+        return NextResponse.json(
+          { error: "walletAddress, ai3Amount, and txHash are required" },
+          { status: 400 }
+        );
+      }
+
+      const result = await escrowService.recordContribution(
         walletAddress,
-        body.ai3Amount,
-        body.displayName
+        ai3Amount,
+        txHash,
+        displayName || undefined
       );
       return NextResponse.json(result);
     }
 
     if (action === "requestFunding") {
-      // TODO: Get real user ID from auth session
-      const userId = "stub-user";
+      const { creditAmount, ai3Equivalent, eulogyId } = body;
+      if (!creditAmount || !ai3Equivalent || !eulogyId) {
+        return NextResponse.json(
+          { error: "creditAmount, ai3Equivalent, and eulogyId are required" },
+          { status: 400 }
+        );
+      }
       const result = await escrowService.requestFunding(
-        userId,
-        body.creditAmount
+        creditAmount,
+        ai3Equivalent,
+        eulogyId
       );
       return NextResponse.json(result);
     }

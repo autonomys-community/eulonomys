@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { SponsorContribute } from "@/components/SponsorContribute";
+import { AnimatedBalance } from "@/components/AnimatedBalance";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,13 @@ export const metadata = {
 export default async function SponsorsPage() {
   // Aggregate escrow balance
   const contributions = await prisma.escrowContribution.findMany({
-    select: { ai3Amount: true, displayName: true, walletAddress: true },
+    select: {
+      ai3Amount: true,
+      displayName: true,
+      walletAddress: true,
+      txHash: true,
+      createdAt: true,
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -30,26 +37,9 @@ export default async function SponsorsPage() {
   );
   const balance = Math.max(0, totalContributed - totalDrawn);
 
-  // Aggregate contributors by wallet, showing display name
-  const contributorMap = new Map<
-    string,
-    { displayName: string; total: number }
-  >();
-  for (const c of contributions) {
-    const key = c.walletAddress;
-    const existing = contributorMap.get(key);
-    if (existing) {
-      existing.total += parseFloat(c.ai3Amount);
-    } else {
-      contributorMap.set(key, {
-        displayName: c.displayName || `${key.slice(0, 6)}...${key.slice(-4)}`,
-        total: parseFloat(c.ai3Amount),
-      });
-    }
-  }
-  const contributors = Array.from(contributorMap.values()).sort(
-    (a, b) => b.total - a.total
-  );
+  const explorerUrl =
+    process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL ||
+    "https://explorer.auto-evm.mainnet.autonomys.xyz";
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
@@ -64,10 +54,13 @@ export default async function SponsorsPage() {
       <div className="mt-8 rounded-lg border border-border bg-stone-100/50 p-6 text-center">
         <p className="text-sm text-muted">Current Fund Balance</p>
         <p className="mt-1 text-3xl font-bold text-foreground">
-          {balance.toFixed(4)} AI3
+          <AnimatedBalance value={balance} />
         </p>
         <p className="mt-1 text-sm text-muted">
-          {totalContributed.toFixed(4)} AI3 contributed total
+          <AnimatedBalance
+            value={totalContributed}
+            suffix=" AI3 contributed total"
+          />
         </p>
       </div>
 
@@ -76,23 +69,47 @@ export default async function SponsorsPage() {
         <SponsorContribute />
       </div>
 
-      {/* Contributors */}
-      {contributors.length > 0 && (
+      {/* Contributions */}
+      {contributions.length > 0 && (
         <div className="mt-8">
           <h2 className="text-lg font-semibold text-foreground">
-            Contributors
+            Contributions
           </h2>
           <div className="mt-4 space-y-2">
-            {contributors.map((c, i) => (
+            {contributions.map((c, i) => (
               <div
                 key={i}
                 className="flex items-center justify-between rounded-md border border-border px-4 py-3"
               >
-                <span className="text-sm text-foreground">
-                  {c.displayName}
-                </span>
-                <span className="text-sm font-medium text-muted">
-                  {c.total.toFixed(4)} AI3
+                <div className="min-w-0">
+                  <span className="text-sm text-foreground">
+                    {c.displayName ||
+                      `${c.walletAddress.slice(0, 6)}...${c.walletAddress.slice(-4)}`}
+                  </span>
+                  <div className="flex items-center gap-2 text-xs text-muted">
+                    <time dateTime={c.createdAt.toISOString()}>
+                      {c.createdAt.toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </time>
+                    {c.txHash && (
+                      <a
+                        href={`${explorerUrl}/tx/${c.txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono underline hover:text-foreground transition-colors"
+                      >
+                        {c.txHash.slice(0, 10)}...{c.txHash.slice(-6)}
+                      </a>
+                    )}
+                  </div>
+                </div>
+                <span className="ml-4 shrink-0 text-sm font-medium text-muted">
+                  {parseFloat(c.ai3Amount).toFixed(4)} AI3
                 </span>
               </div>
             ))}

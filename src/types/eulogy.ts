@@ -64,7 +64,7 @@ export interface IntentStatusResponse {
 
 export interface EscrowContributor {
   displayName: string;
-  totalContributed: string;
+  totalAi3: string;
 }
 
 export interface EscrowBalance {
