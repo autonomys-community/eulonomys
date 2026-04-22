@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { createPublicClient, http, formatEther } from "viem";
+import { createPublicClient, http } from "viem";
+import { shannonsToAi3 } from "@autonomys/auto-utils";
 import { SponsorContribute } from "@/components/SponsorContribute";
 import { AnimatedBalance } from "@/components/AnimatedBalance";
 
@@ -34,7 +35,7 @@ async function fetchEscrowBalance(): Promise<number> {
       address: escrowAddress as `0x${string}`,
     });
 
-    return parseFloat(formatEther(wei));
+    return parseFloat(shannonsToAi3(wei));
   } catch {
     return 0;
   }

@@ -10,6 +10,7 @@ import {
 } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { parseGwei } from "viem";
+import { shannonsToAi3 } from "@autonomys/auto-utils";
 import type { PaymentIntent } from "@/types/eulogy";
 
 interface PaymentFlowProps {
@@ -209,7 +210,7 @@ export function PaymentFlow({
 
   // Format AI3 for display
   const displayAmount = intent
-    ? `${parseFloat(intent.ai3AmountWei) / 1e18} AI3`
+    ? `${shannonsToAi3(BigInt(intent.ai3AmountWei))} AI3`
     : "";
 
   // --- Connect wallet prompt ---

@@ -1,3 +1,4 @@
+import { shannonsToAi3 } from "@autonomys/auto-utils";
 import { config } from "@/config/app";
 import type {
   CostEstimate,
@@ -91,11 +92,8 @@ export class AutoDrivePaymentService implements PaymentService {
     const shannonsPerByte = BigInt(intent.shannonsPerByte);
     const ai3AmountWei = shannonsPerByte * BigInt(contentSizeBytes);
 
-    // Convert wei to human-readable AI3 (18 decimals)
-    const ai3Amount = formatAi3(ai3AmountWei);
-
     return {
-      ai3Amount,
+      ai3Amount: shannonsToAi3(ai3AmountWei),
       ai3AmountWei: ai3AmountWei.toString(),
       creditBytes: contentSizeBytes.toString(),
       shannonsPerByte: intent.shannonsPerByte,
@@ -177,12 +175,5 @@ export class AutoDrivePaymentService implements PaymentService {
   }
 }
 
-/** Format a BigInt wei value as human-readable AI3 (18 decimals) */
-function formatAi3(wei: bigint): string {
-  const whole = wei / 10n ** 18n;
-  const fraction = wei % 10n ** 18n;
-  const fractionStr = fraction.toString().padStart(18, "0").slice(0, 6);
-  return `${whole}.${fractionStr}`;
-}
 
 export const paymentService: PaymentService = new AutoDrivePaymentService();
