@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { paymentService } from "@/services/payment";
 
+export async function GET() {
+  try {
+    const contractInfo = await paymentService.getContractInfo();
+    return NextResponse.json(contractInfo);
+  } catch (error) {
+    console.error("Contract info error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch contract info" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

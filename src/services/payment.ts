@@ -6,7 +6,14 @@ import type {
   IntentStatusResponse,
 } from "@/types/eulogy";
 
+export interface ContractInfo {
+  chainId: number;
+  contractAddress: string;
+  payIntentAbi: readonly unknown[];
+}
+
 export interface PaymentService {
+  getContractInfo(): Promise<ContractInfo>;
   estimateCost(contentSizeBytes: number): Promise<CostEstimate>;
   createIntent(contentSizeBytes: number): Promise<PaymentIntent>;
   watchTransaction(intentId: string, txHash: string): Promise<void>;
@@ -18,18 +25,36 @@ export interface PaymentService {
  * Calls the Auto Drive REST API for credit purchase intents.
  *
  * Flow:
- * 1. POST /intents — create intent with locked price
- * 2. User sends AI3 to contract via payIntent(intentId)
- * 3. POST /intents/:id/watch — submit txHash
- * 4. Poll GET /intents/:id until COMPLETED
+ * 1. GET /intents/contract — fetch contract address + ABI (public, cached)
+ * 2. POST /intents — create intent with locked price
+ * 3. User sends AI3 to contract via payIntent(intentId)
+ * 4. POST /intents/:id/watch — submit txHash
+ * 5. Poll GET /intents/:id until COMPLETED
  */
 export class AutoDrivePaymentService implements PaymentService {
   private baseUrl: string;
   private apiKey: string;
+  private contractInfoCache: ContractInfo | null = null;
 
   constructor() {
     this.baseUrl = config.autoDrive.apiUrl;
     this.apiKey = config.autoDrive.apiKey;
+  }
+
+  /**
+   * Fetch contract details from Auto Drive — public endpoint, no auth required.
+   * Cached for the lifetime of the service instance.
+   */
+  async getContractInfo(): Promise<ContractInfo> {
+    if (this.contractInfoCache) return this.contractInfoCache;
+
+    const res = await fetch(`${this.baseUrl}/intents/contract`);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch contract info: ${res.status}`);
+    }
+
+    this.contractInfoCache = await res.json() as ContractInfo;
+    return this.contractInfoCache;
   }
 
   private headers(): Record<string, string> {
@@ -78,24 +103,27 @@ export class AutoDrivePaymentService implements PaymentService {
   }
 
   async createIntent(contentSizeBytes: number): Promise<PaymentIntent> {
-    const res = await fetch(`${this.baseUrl}/intents`, {
-      method: "POST",
-      headers: this.headers(),
-    });
+    const [contractInfo, intentRes] = await Promise.all([
+      this.getContractInfo(),
+      fetch(`${this.baseUrl}/intents`, {
+        method: "POST",
+        headers: this.headers(),
+      }),
+    ]);
 
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Failed to create intent: ${res.status} ${body}`);
+    if (!intentRes.ok) {
+      const body = await intentRes.text();
+      throw new Error(`Failed to create intent: ${intentRes.status} ${body}`);
     }
 
-    const intent = await res.json();
+    const intent = await intentRes.json();
     const shannonsPerByte = BigInt(intent.shannonsPerByte);
     const ai3AmountWei = shannonsPerByte * BigInt(contentSizeBytes);
 
     return {
       intentId: intent.id,
       ai3AmountWei: ai3AmountWei.toString(),
-      contractAddress: config.payment.contractAddress,
+      contractAddress: contractInfo.contractAddress,
       shannonsPerByte: intent.shannonsPerByte,
       expiresAt: intent.expiresAt,
     };

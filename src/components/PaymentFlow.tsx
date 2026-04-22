@@ -10,7 +10,6 @@ import {
 } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { parseGwei } from "viem";
-import { CREDITS_RECEIVER_ABI } from "@/config/contracts";
 import type { PaymentIntent } from "@/types/eulogy";
 
 interface PaymentFlowProps {
@@ -36,6 +35,7 @@ export function PaymentFlow({
 }: PaymentFlowProps) {
   const [step, setStep] = useState<PaymentStep>("estimate");
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
+  const [payIntentAbi, setPayIntentAbi] = useState<readonly unknown[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>("");
 
@@ -58,19 +58,28 @@ export function PaymentFlow({
 
     setError(null);
     try {
-      const res = await fetch("/api/payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "createIntent", contentSizeBytes }),
-      });
+      const [intentRes, contractRes] = await Promise.all([
+        fetch("/api/payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "createIntent", contentSizeBytes }),
+        }),
+        fetch("/api/payment"),
+      ]);
 
-      if (!res.ok) {
-        const data = await res.json();
+      if (!intentRes.ok) {
+        const data = await intentRes.json();
         throw new Error(data.details || data.error || "Failed to create intent");
       }
 
-      const data: PaymentIntent = await res.json();
+      const data: PaymentIntent = await intentRes.json();
       setIntent(data);
+
+      if (contractRes.ok) {
+        const contractInfo = await contractRes.json();
+        setPayIntentAbi(contractInfo.payIntentAbi);
+      }
+
       setStep("confirm");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create payment intent");
@@ -91,11 +100,23 @@ export function PaymentFlow({
         ? (await publicClient.getGasPrice()) + parseGwei("1")
         : undefined;
 
+      // Use ABI from Auto Drive API if available, otherwise fall back to local definition
+      const abi = payIntentAbi ?? [
+        {
+          inputs: [{ name: "intentId", type: "bytes32" }],
+          name: "payIntent",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+      ];
+
       // The intentId from Auto Drive is already a 0x-prefixed 32-byte hex string
       // (generated via randomBytes(32).toString('hex')). Pass it directly as bytes32.
       const hash = await writeContractAsync({
         address: intent.contractAddress as `0x${string}`,
-        abi: CREDITS_RECEIVER_ABI,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        abi: abi as any,
         functionName: "payIntent",
         args: [intent.intentId as `0x${string}`],
         value: BigInt(intent.ai3AmountWei),
