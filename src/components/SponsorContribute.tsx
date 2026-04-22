@@ -89,7 +89,8 @@ export function SponsorContribute() {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to record contribution");
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.details || data.error || "Failed to record contribution");
       }
 
       setStatus("success");

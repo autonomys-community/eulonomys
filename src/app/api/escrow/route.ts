@@ -53,9 +53,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (error) {
-    console.error("Escrow error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Escrow error:", message);
     return NextResponse.json(
-      { error: "Escrow operation failed" },
+      { error: "Escrow operation failed", details: message },
       { status: 500 }
     );
   }
