@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { aiAssistantService } from "@/services/aiAssistant";
+
+// LLM calls can be slow; give them breathing room
+export const maxDuration = 30;
 import type { AssistantMessage } from "@/types/eulogy";
 
 export async function POST(request: NextRequest) {

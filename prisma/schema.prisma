@@ -77,3 +77,19 @@ model AssistantSession {
 
   @@index([userId, createdAt])
 }
+
+// Admin auth — DB-backed so nonces/sessions survive across serverless instances
+model AdminNonce {
+  nonce     String   @id
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model AdminSession {
+  token         String   @id
+  walletAddress String
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([walletAddress])
+}

@@ -7,11 +7,11 @@ import { validateSession } from "@/lib/nonceStore";
  * Verify admin via session token issued by /api/admin/check.
  * Returns the verified wallet address or null.
  */
-function verifyAdmin(request: NextRequest): string | null {
+async function verifyAdmin(request: NextRequest): Promise<string | null> {
   const token = request.headers.get("authorization")?.replace("Bearer ", "");
   if (!token) return null;
 
-  const walletAddress = validateSession(token);
+  const walletAddress = await validateSession(token);
   if (!walletAddress) return null;
 
   // Double-check the wallet is still in the admin list
@@ -24,7 +24,7 @@ function verifyAdmin(request: NextRequest): string | null {
 
 export async function GET(request: NextRequest) {
   try {
-    const adminAddress = verifyAdmin(request);
+    const adminAddress = await verifyAdmin(request);
     if (!adminAddress) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const adminAddress = verifyAdmin(request);
+    const adminAddress = await verifyAdmin(request);
     if (!adminAddress) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+
+// Auto Drive uploads can take 20–40 s on slower connections
+export const maxDuration = 60;
 import { autoDriveClient } from "@/services/autoDrive";
 import { moderationService } from "@/services/moderation";
 import type { EulogyMetadata } from "@/types/eulogy";

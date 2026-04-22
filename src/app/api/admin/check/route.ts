@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     const nonce = message.slice(MESSAGE_PREFIX.length);
-    if (!consumeNonce(nonce)) {
+    if (!(await consumeNonce(nonce))) {
       return fail();
     }
 
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Issue session token
-    const sessionToken = createSession(walletAddress);
+    const sessionToken = await createSession(walletAddress);
     return NextResponse.json({ authenticated: true, sessionToken });
   } catch {
     return fail();
