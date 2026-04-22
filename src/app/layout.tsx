@@ -73,6 +73,14 @@ function Footer() {
           >
             About Autonomys
           </a>
+          <a
+            href="https://github.com/autonomys-community/eulonomys"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground transition-colors"
+          >
+            GitHub
+          </a>
         </div>
       </div>
     </footer>
