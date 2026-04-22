@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { createPublicClient, http, formatEther } from "viem";
 import { SponsorContribute } from "@/components/SponsorContribute";
 import { AnimatedBalance } from "@/components/AnimatedBalance";
 
@@ -10,32 +11,54 @@ export const metadata = {
     "Community sponsors help others preserve memories of their loved ones on the Autonomys Network.",
 };
 
-export default async function SponsorsPage() {
-  // Aggregate escrow balance
-  const contributions = await prisma.escrowContribution.findMany({
-    select: {
-      ai3Amount: true,
-      displayName: true,
-      walletAddress: true,
-      txHash: true,
-      createdAt: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+/** Read the live AI3 balance of the escrow wallet from the chain. */
+async function fetchEscrowBalance(): Promise<number> {
+  const escrowAddress = process.env.NEXT_PUBLIC_ESCROW_WALLET_ADDRESS;
+  const rpcUrl = process.env.NEXT_PUBLIC_AUTONOMYS_RPC_URL;
+  const chainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "870", 10);
 
-  const drawdowns = await prisma.escrowDrawdown.findMany({
-    select: { ai3Equivalent: true },
-  });
+  if (!escrowAddress || !rpcUrl) return 0;
+
+  try {
+    const client = createPublicClient({
+      chain: {
+        id: chainId,
+        name: "Autonomys",
+        nativeCurrency: { name: "AI3", symbol: "AI3", decimals: 18 },
+        rpcUrls: { default: { http: [rpcUrl] } },
+      },
+      transport: http(rpcUrl),
+    });
+
+    const wei = await client.getBalance({
+      address: escrowAddress as `0x${string}`,
+    });
+
+    return parseFloat(formatEther(wei));
+  } catch {
+    return 0;
+  }
+}
+
+export default async function SponsorsPage() {
+  const [balance, contributions] = await Promise.all([
+    fetchEscrowBalance(),
+    prisma.escrowContribution.findMany({
+      select: {
+        ai3Amount: true,
+        displayName: true,
+        walletAddress: true,
+        txHash: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
 
   const totalContributed = contributions.reduce(
     (sum, c) => sum + parseFloat(c.ai3Amount),
     0
   );
-  const totalDrawn = drawdowns.reduce(
-    (sum, d) => sum + parseFloat(d.ai3Equivalent),
-    0
-  );
-  const balance = Math.max(0, totalContributed - totalDrawn);
 
   const explorerUrl =
     process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL ||
@@ -54,14 +77,16 @@ export default async function SponsorsPage() {
       <div className="mt-8 rounded-lg border border-border bg-stone-100/50 p-6 text-center">
         <p className="text-sm text-muted">Current Fund Balance</p>
         <p className="mt-1 text-3xl font-bold text-foreground">
-          <AnimatedBalance value={balance} />
+          <AnimatedBalance value={balance} suffix=" AI3" />
         </p>
-        <p className="mt-1 text-sm text-muted">
-          <AnimatedBalance
-            value={totalContributed}
-            suffix=" AI3 contributed total"
-          />
-        </p>
+        {contributions.length > 0 && (
+          <p className="mt-1 text-sm text-muted">
+            <AnimatedBalance
+              value={totalContributed}
+              suffix=" AI3 contributed via app"
+            />
+          </p>
+        )}
       </div>
 
       {/* Contribute */}
