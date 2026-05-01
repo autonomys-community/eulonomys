@@ -32,7 +32,7 @@ function Header() {
           className="flex items-center gap-2.5"
         >
           <Image
-            src="/logo-mark.png"
+            src="/logo-mark-cropped.png"
             alt="Eulonomys"
             width={32}
             height={32}
