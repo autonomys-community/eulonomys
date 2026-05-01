@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import Link from "next/link";
+import Image from "next/image";
 import { Web3Provider } from "@/providers/Web3Provider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import "./globals.css";
@@ -14,6 +15,12 @@ export const metadata: Metadata = {
   title: "Eulonomys — Permanent On-Chain Eulogies",
   description:
     "Create permanent, immutable eulogies stored on the Autonomys Network. Preserve memories forever.",
+  openGraph: {
+    title: "Eulonomys — Permanent On-Chain Eulogies",
+    description:
+      "Create permanent, immutable eulogies stored on the Autonomys Network. Preserve memories forever.",
+    images: [{ url: "/logo-full.png", width: 1254, height: 1254 }],
+  },
 };
 
 function Header() {
@@ -22,9 +29,18 @@ function Header() {
       <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
         <Link
           href="/"
-          className="text-lg font-semibold tracking-tight text-foreground"
+          className="flex items-center gap-2.5"
         >
-          Eulonomys
+          <Image
+            src="/logo-mark.png"
+            alt="Eulonomys"
+            width={32}
+            height={32}
+            className="h-8 w-8"
+          />
+          <span className="text-lg font-semibold tracking-tight text-foreground">
+            Eulonomys
+          </span>
         </Link>
         <nav className="flex items-center gap-6 text-sm text-muted">
           <Link href="/browse" className="hover:text-foreground transition-colors">
