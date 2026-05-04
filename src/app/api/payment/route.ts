@@ -1,9 +1,17 @@
+import { createAutoDriveApi } from "@autonomys/auto-drive";
 import { NextRequest, NextResponse } from "next/server";
-import { paymentService } from "@/services/payment";
+import { config } from "@/config/app";
+
+function getApi() {
+  return createAutoDriveApi({
+    apiKey: config.autoDrive.apiKey,
+    apiUrl: config.autoDrive.apiUrl,
+  });
+}
 
 export async function GET() {
   try {
-    const contractInfo = await paymentService.getContractInfo();
+    const contractInfo = await getApi().getPaymentContractInfo();
     return NextResponse.json(contractInfo);
   } catch (error) {
     console.error("Contract info error:", error);
@@ -28,7 +36,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      const intent = await paymentService.createIntent(contentSizeBytes);
+      const intent = await getApi().createPaymentIntent(contentSizeBytes);
       return NextResponse.json(intent);
     }
 
@@ -41,7 +49,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      await paymentService.watchTransaction(intentId, txHash);
+      await getApi().watchPaymentTransaction(intentId, txHash);
       return NextResponse.json({ success: true });
     }
 
@@ -54,7 +62,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      const status = await paymentService.getIntentStatus(intentId);
+      const status = await getApi().getPaymentIntentStatus(intentId);
       return NextResponse.json(status);
     }
 
@@ -67,7 +75,10 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      const status = await paymentService.waitForCompletion(intentId);
+      const status = await getApi().waitForPaymentCompletion(intentId, {
+        pollIntervalMs: config.payment.pollIntervalMs,
+        timeoutMs: config.payment.pollTimeoutMs,
+      });
       return NextResponse.json({ status });
     }
 

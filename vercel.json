@@ -1,0 +1,3 @@
+{
+  "buildCommand": "[ \"$VERCEL_ENV\" = \"production\" ] && prisma migrate deploy; next build"
+}

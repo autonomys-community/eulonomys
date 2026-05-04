@@ -3,15 +3,16 @@
 import { useState, useCallback } from "react";
 import {
   useAccount,
+  useChainId,
   useConnect,
   usePublicClient,
+  useSwitchChain,
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { parseGwei } from "viem";
-import { shannonsToAi3 } from "@autonomys/auto-utils";
-import type { PaymentIntent } from "@/types/eulogy";
+import type { PaymentIntent } from "@autonomys/auto-drive";
 
 interface PaymentFlowProps {
   contentSizeBytes: number;
@@ -42,6 +43,8 @@ export function PaymentFlow({
 
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
+  const currentChainId = useChainId();
+  const { switchChainAsync } = useSwitchChain();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
@@ -79,13 +82,23 @@ export function PaymentFlow({
       if (contractRes.ok) {
         const contractInfo = await contractRes.json();
         setPayIntentAbi(contractInfo.payIntentAbi);
+
+        // Switch to the correct chain if the wallet is on the wrong network
+        if (contractInfo.chainId && currentChainId !== contractInfo.chainId) {
+          await switchChainAsync({ chainId: contractInfo.chainId });
+        }
       }
 
       setStep("confirm");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create payment intent");
+      const msg = e instanceof Error ? e.message : "Could not create payment intent";
+      if (msg.includes("User rejected") || msg.includes("denied")) {
+        setError("Network switch cancelled. Please switch to the Autonomys network to continue.");
+      } else {
+        setError(msg);
+      }
     }
-  }, [contentSizeBytes, isConnected, connect]);
+  }, [contentSizeBytes, isConnected, connect, currentChainId, switchChainAsync]);
 
   // Step 2: User confirms — send on-chain tx
   const handlePay = useCallback(async () => {
@@ -209,9 +222,7 @@ export function PaymentFlow({
   const explorerUrl = process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL || "https://explorer.auto-evm.mainnet.autonomys.xyz";
 
   // Format AI3 for display
-  const displayAmount = intent
-    ? `${shannonsToAi3(BigInt(intent.ai3AmountWei))} AI3`
-    : "";
+  const displayAmount = intent ? `${intent.ai3Amount} AI3` : "";
 
   // --- Connect wallet prompt ---
   if (!isConnected) {
