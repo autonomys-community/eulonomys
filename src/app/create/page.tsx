@@ -75,9 +75,12 @@ export default function CreatePage() {
         </p>
         <div className="mt-6 rounded-md bg-stone-100 p-4">
           <p className="text-sm text-muted">Permalink</p>
-          <p className="mt-1 font-mono text-sm text-foreground break-all">
-            /eulogy/{cid}
-          </p>
+          <a
+            href={`/eulogy/${cid}`}
+            className="mt-1 block font-mono text-sm text-foreground break-all hover:underline"
+          >
+            {typeof window !== "undefined" ? window.location.origin : ""}/eulogy/{cid}
+          </a>
         </div>
         <button
           onClick={() => router.push(`/eulogy/${cid}`)}
